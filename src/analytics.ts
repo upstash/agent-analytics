@@ -42,8 +42,6 @@ const EVENT_SCHEMA = {
   hour: { type: "U64" as const, fast: true as const },
   provider: { type: "KEYWORD" as const },
   path: { type: "KEYWORD" as const },
-  sourceUrl: { type: "KEYWORD" as const },
-  country: { type: "KEYWORD" as const },
 };
 
 function resolveRange(range: TimeRange): { sinceHour: number; untilHour: number } {
@@ -191,8 +189,18 @@ class AnalyticsQuery {
    * reference to it. This makes a network round-trip, so call it **once at
    * setup**, not on the read path: {@link aggregateBy} / {@link timeseries}
    * use a cheap local reference and assume the index already exists.
+   *
+   * `existsOk` makes creation a no-op when an index of this name already
+   * exists — but it does **not** reconcile a differing schema (an older index
+   * created with extra/renamed fields keeps its stale schema). So if an index
+   * already exists with a schema that doesn't match {@link EVENT_SCHEMA}, we
+   * drop it first and recreate it with the current schema.
    */
   public async getIndex() {
+    const existing = await this.index().describe();
+    if (existing !== null && !this.schemaMatches(existing.schema)) {
+      await this.index().drop();
+    }
     await this.redis.search.createIndex<typeof EVENT_SCHEMA>({
       name: this.indexName,
       prefix: this.keyPrefix,
@@ -201,6 +209,20 @@ class AnalyticsQuery {
       schema: EVENT_SCHEMA,
     });
     return this.index();
+  }
+
+  /**
+   * Whether an existing index's described schema matches {@link EVENT_SCHEMA}:
+   * the same set of fields, each with the same type. Optional flags like `fast`
+   * are ignored — the server may report them differently than we declared them.
+   */
+  private schemaMatches(actual: Record<string, { type: string }>): boolean {
+    const expectedFields = Object.keys(EVENT_SCHEMA);
+    const actualFields = Object.keys(actual);
+    if (expectedFields.length !== actualFields.length) return false;
+    return expectedFields.every(
+      (field) => actual[field]?.type === EVENT_SCHEMA[field as keyof typeof EVENT_SCHEMA].type,
+    );
   }
 
   /**

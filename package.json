@@ -1,6 +1,6 @@
 {
   "name": "@upstash/agent-analytics",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AI citation analytics SDK for Upstash Redis.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,6 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "seed": "bun run scripts/seed.ts",
     "prepack": "bun run build",
     "pack:dry": "npm pack --dry-run"
   },

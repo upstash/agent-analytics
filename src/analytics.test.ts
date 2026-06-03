@@ -94,8 +94,8 @@ describe("ingestion", () => {
 
   test("dimension order does not matter: same counter is incremented", async () => {
     const time = new Date(now.getTime() - 4 * HOUR_MS);
-    const a: TrackedEvent = { provider: "claude", path: "/blog", country: "US" };
-    const b: TrackedEvent = { country: "US", path: "/blog", provider: "claude" } as TrackedEvent;
+    const a: TrackedEvent = { provider: "claude", path: "/blog" };
+    const b: TrackedEvent = { path: "/blog", provider: "claude" };
 
     // Both spellings resolve to the same key.
     expect(keyFor(analytics, a, time)).toBe(keyFor(analytics, b, time));
@@ -105,7 +105,7 @@ describe("ingestion", () => {
 
     const hash = (await redis.hgetall(keyFor(analytics, a, time))) as Record<string, unknown>;
     expect(Number(hash.count)).toBe(2);
-    expect(String(hash.country)).toBe("US");
+    expect(String(hash.provider)).toBe("claude");
   });
 
   test("different dimensions and different hours occupy different keys", async () => {
@@ -145,7 +145,7 @@ describe("ingestion", () => {
       (h) => h && String(h.provider) === "perplexity" && String(h.path) === "https://upstash.com/blog",
     );
     expect(tracked).toBeDefined();
-    expect(String(tracked!.sourceUrl)).toBe("https://www.perplexity.ai/");
+    expect(String(tracked!.provider)).toBe("perplexity");
   });
 });
 
@@ -230,5 +230,91 @@ describe("querying without an index", () => {
   test("timeseries throws IndexNotFoundError when the index does not exist", async () => {
     const promise = analytics.query.timeseries({ since: new Date(Date.now() - HOUR_MS) });
     await expect(promise).rejects.toBeInstanceOf(IndexNotFoundError);
+  });
+});
+
+describe("getIndex schema reconciliation", () => {
+  // The schema getIndex() should converge to, regardless of what existed before.
+  const EXPECTED_FIELDS = ["count", "hour", "path", "provider"];
+
+  /** A bare index handle for inspecting the server-side schema via describe(). */
+  function indexHandle(name: string) {
+    return redis.search.index({
+      name,
+      schema: {
+        count: { type: "U64" as const, fast: true as const },
+        hour: { type: "U64" as const, fast: true as const },
+        provider: { type: "KEYWORD" as const },
+        path: { type: "KEYWORD" as const },
+      },
+    });
+  }
+
+  /** A fresh analytics instance with a known, unique index name. */
+  function freshAnalytics() {
+    const prefix = uniquePrefix();
+    const indexName = `${prefix.replace(/[^a-zA-Z0-9_-]/g, "_")}-events`;
+    return { analytics: new TestableAnalytics({ redis, prefix, indexName }), indexName };
+  }
+
+  test("creates the index when none exists", async () => {
+    const { analytics, indexName } = freshAnalytics();
+    try {
+      expect(await indexHandle(indexName).describe()).toBeNull();
+
+      await analytics.query.getIndex();
+
+      const description = await indexHandle(indexName).describe();
+      expect(description).not.toBeNull();
+      expect(Object.keys(description!.schema).sort()).toEqual(EXPECTED_FIELDS);
+    } finally {
+      await analytics.query.dropIndex();
+    }
+  });
+
+  test("is a no-op when an index already exists with the same schema", async () => {
+    const { analytics, indexName } = freshAnalytics();
+    try {
+      await analytics.query.getIndex();
+      const before = await indexHandle(indexName).describe();
+
+      // Second call: schema already matches, so nothing should change.
+      await analytics.query.getIndex();
+      const after = await indexHandle(indexName).describe();
+
+      expect(after).toEqual(before);
+    } finally {
+      await analytics.query.dropIndex();
+    }
+  });
+
+  test("drops and recreates the index when the existing schema is wrong", async () => {
+    const { analytics, indexName } = freshAnalytics();
+    try {
+      // Pre-create an index carrying a stale extra field (e.g. a removed dimension).
+      await redis.search.createIndex({
+        name: indexName,
+        prefix: analytics.keyPrefix,
+        dataType: "hash",
+        schema: {
+          count: { type: "U64", fast: true },
+          hour: { type: "U64", fast: true },
+          provider: { type: "KEYWORD" },
+          path: { type: "KEYWORD" },
+          sourceUrl: { type: "KEYWORD" },
+        },
+      });
+      const stale = await indexHandle(indexName).describe();
+      expect(Object.keys(stale!.schema)).toContain("sourceUrl");
+
+      await analytics.query.getIndex();
+
+      // The stale field is gone — the index was recreated with the current schema.
+      const reconciled = await indexHandle(indexName).describe();
+      expect(Object.keys(reconciled!.schema).sort()).toEqual(EXPECTED_FIELDS);
+      expect(reconciled).not.toEqual(stale);
+    } finally {
+      await analytics.query.dropIndex();
+    }
   });
 });

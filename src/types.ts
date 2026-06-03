@@ -17,14 +17,6 @@ export type Provider =
   | "other"
   | (string & {});
 
-/** Geo information optionally attached to a request by the edge runtime. */
-export type Geo = {
-  country?: string;
-  city?: string;
-  region?: string;
-  ip?: string;
-};
-
 /**
  * The dimensions of a tracked citation. This is intentionally a small, pruned
  * set: every distinct combination of these values becomes its own counter
@@ -37,10 +29,6 @@ export type TrackedEvent = {
   provider: Provider;
   /** The path on our site that was cited. */
   path: string;
-  /** Where the citation came from (referrer), if known. */
-  sourceUrl?: string;
-  /** Visitor country, if the edge runtime provided geo data. */
-  country?: string;
 };
 
 /** The dimensions that can be grouped/filtered on. */

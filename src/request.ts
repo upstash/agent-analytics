@@ -1,9 +1,6 @@
-import type { Geo, Provider, TrackedEvent } from "./types.ts";
+import type { Provider, TrackedEvent } from "./types.ts";
 
-type RequestWithGeo = Request & {
-  geo?: Geo;
-  cf?: Geo;
-  ip?: string;
+type RequestWithNextUrl = Request & {
   nextUrl?: { href: string };
 };
 
@@ -13,24 +10,12 @@ type RequestWithGeo = Request & {
  * like raw IP and user-agent are deliberately not stored as dimensions.
  */
 export function eventFromRequest(req: Request): TrackedEvent {
-  const request = req as RequestWithGeo;
+  const request = req as RequestWithNextUrl;
 
   return {
     provider: detectProvider(request),
     path: normalizeUrl(request.nextUrl?.href ?? request.url),
-    sourceUrl: normalizeOptionalUrl(
-      request.headers.get("referer") ?? request.headers.get("referrer") ?? undefined,
-    ),
-    country: extractGeo(request).country,
   };
-}
-
-function extractGeo(req: RequestWithGeo): Geo {
-  return req.geo ?? req.cf ?? {};
-}
-
-function normalizeOptionalUrl(url: string | undefined): string | undefined {
-  return url === undefined ? undefined : normalizeUrl(url);
 }
 
 /** Drop the fragment so `/a#x` and `/a#y` aren't counted separately. */

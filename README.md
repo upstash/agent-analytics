@@ -39,7 +39,7 @@ hash holds the counter for one combination of dimensions in one hour:
 
 ```
 key:   <prefix>:event:<data-hash>:<hour>
-value: { count, hour, provider, path, sourceUrl?, country? }
+value: { count, hour, provider, path }
 ```
 
 - **`data-hash`** is derived from the event's dimensions. It is
@@ -64,7 +64,7 @@ import { redis } from "./redis";
 
 const analytics = new AgentAnalytics({ redis });
 
-// From a Fetch/NextRequest — provider, path, sourceUrl and country are inferred:
+// From a Fetch/NextRequest — provider and path are inferred:
 await analytics.track(request);
 
 // Or pass explicit dimensions (time defaults to now):

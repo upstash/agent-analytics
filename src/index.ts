@@ -5,7 +5,6 @@ export type {
   AggregateByOptions,
   DimensionKey,
   Duration,
-  Geo,
   Provider,
   Redis,
   TimeRange,
