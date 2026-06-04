@@ -10,14 +10,14 @@ Track a request in your Next.js middleware (now named proxy.ts):
 
 ```typescript
 // proxy.ts
-import { NextResponse, type NextRequest } from "next/server"
+import { NextResponse, type NextRequest, after } from "next/server"
 import { AgentAnalytics } from "@upstash/agent-analytics"
 import { redis } from "./redis"
 
 const analytics = new AgentAnalytics({ redis })
 
 export const proxy = async (request: NextRequest) => {
-  await analytics.track(request)
+  after(() => analytics.track(request))
 
   return NextResponse.next()
 }
