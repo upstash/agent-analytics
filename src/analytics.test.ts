@@ -130,7 +130,11 @@ describe("ingestion", () => {
 
   test("track(Request) infers dimensions and writes the event", async () => {
     const req = new Request("https://upstash.com/blog", {
-      headers: { "user-agent": "PerplexityBot/1.0", referer: "https://www.perplexity.ai/" },
+      headers: {
+        "user-agent": "PerplexityBot/1.0",
+        referer: "https://www.perplexity.ai/",
+        accept: "Text/Markdown, text/html;q=0.8",
+      },
     });
 
     expect(await analytics.track(req)).toBe(1);
@@ -146,6 +150,7 @@ describe("ingestion", () => {
     );
     expect(tracked).toBeDefined();
     expect(String(tracked!.provider)).toBe("perplexity");
+    expect(String(tracked!.accept)).toBe("text/markdown, text/html;q=0.8");
   });
 });
 
@@ -235,7 +240,7 @@ describe("querying without an index", () => {
 
 describe("getIndex schema reconciliation", () => {
   // The schema getIndex() should converge to, regardless of what existed before.
-  const EXPECTED_FIELDS = ["count", "hour", "path", "provider"];
+  const EXPECTED_FIELDS = ["accept", "count", "hour", "path", "provider"];
 
   /** A bare index handle for inspecting the server-side schema via describe(). */
   function indexHandle(name: string) {
@@ -244,6 +249,7 @@ describe("getIndex schema reconciliation", () => {
       schema: {
         count: { type: "U64" as const, fast: true as const },
         hour: { type: "U64" as const, fast: true as const },
+        accept: { type: "KEYWORD" as const },
         provider: { type: "KEYWORD" as const },
         path: { type: "KEYWORD" as const },
       },
@@ -299,6 +305,7 @@ describe("getIndex schema reconciliation", () => {
         schema: {
           count: { type: "U64", fast: true },
           hour: { type: "U64", fast: true },
+          accept: { type: "KEYWORD" },
           provider: { type: "KEYWORD" },
           path: { type: "KEYWORD" },
           sourceUrl: { type: "KEYWORD" },
