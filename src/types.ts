@@ -29,6 +29,8 @@ export type TrackedEvent = {
   provider: Provider;
   /** The path on our site that was cited. */
   path: string;
+  /** The request's Accept header, when present. */
+  accept?: string;
 };
 
 /** The dimensions that can be grouped/filtered on. */

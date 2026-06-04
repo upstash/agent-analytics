@@ -40,6 +40,7 @@ export class IndexNotFoundError extends Error {
 const EVENT_SCHEMA = {
   count: { type: "U64" as const, fast: true as const },
   hour: { type: "U64" as const, fast: true as const },
+  accept: { type: "KEYWORD" as const },
   provider: { type: "KEYWORD" as const },
   path: { type: "KEYWORD" as const },
 };
