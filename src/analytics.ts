@@ -287,9 +287,8 @@ export class AgentAnalytics {
    * applies to the event form and defaults to now.
    *
    * Returns a promise resolving to the counter's new value. In a request
-   * handler you usually don't want to block the response on it — hand it to the
-   * runtime's `waitUntil` instead (see the README for the Vercel/Next.js
-   * pattern).
+   * handler you usually don't want to block the response on it — schedule it
+   * with Next.js `after()` instead (see the README proxy example).
    *
    * The request form resolves to `null` when the request can't be attributed
    * to a known agent — only known agents are recorded.
