@@ -5,17 +5,10 @@ export type { Duration } from "./duration.ts";
 
 /**
  * The AI agent / crawler that produced the citation. Inferred from the
- * request's user-agent and referrer, falling back to `"other"`. Open-ended so
- * callers can record providers we don't know about yet.
+ * request's user-agent and referrer. Only known agents are recorded — a
+ * request that matches none of these is dropped rather than bucketed.
  */
-export type Provider =
-  | "chatgpt"
-  | "claude"
-  | "perplexity"
-  | "gemini"
-  | "copilot"
-  | "other"
-  | (string & {});
+export type Provider = "chatgpt" | "claude" | "perplexity" | "gemini" | "copilot";
 
 /**
  * The dimensions of a tracked citation. This is intentionally a small, pruned

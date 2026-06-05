@@ -291,13 +291,17 @@ export class AgentAnalytics {
    * runtime's `waitUntil` instead (see the README for the Vercel/Next.js
    * pattern).
    *
+   * The request form resolves to `null` when the request can't be attributed
+   * to a known agent — only known agents are recorded.
+   *
    * Dimension order does not matter: `track({ provider, path })` and
    * `track({ path, provider })` increment the same counter.
    */
-  public track(req: Request): Promise<number>;
+  public track(req: Request): Promise<number | null>;
   public track(event: TrackedEvent, time?: Date): Promise<number>;
-  public async track(eventOrReq: TrackedEvent | Request, time?: Date): Promise<number> {
+  public async track(eventOrReq: TrackedEvent | Request, time?: Date): Promise<number | null> {
     const event = eventOrReq instanceof Request ? eventFromRequest(eventOrReq) : eventOrReq;
+    if (event === undefined) return null;
     return this.ingest(event, time);
   }
 

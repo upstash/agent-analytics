@@ -147,6 +147,18 @@ describe("ingestion", () => {
     expect(tracked).toBeDefined();
     expect(String(tracked!.provider)).toBe("perplexity");
   });
+
+  test("track(Request) from an unknown agent records nothing and resolves to null", async () => {
+    const before = (await scanKeys(analytics.keyPrefix)).length;
+    const req = new Request("https://upstash.com/blog", {
+      headers: { "user-agent": "Mozilla/5.0 (some random browser)" },
+    });
+
+    expect(await analytics.track(req)).toBeNull();
+
+    // No new event hash was written.
+    expect((await scanKeys(analytics.keyPrefix)).length).toBe(before);
+  });
 });
 
 describe("analytics aggregations", () => {
